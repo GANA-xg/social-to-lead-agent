@@ -1,70 +1,38 @@
-from pathlib import Path
-from langchain_openai import ChatOpenAI
 from langchain_core.messages import AIMessage
-
-# Path to knowledge base
-KNOWLEDGE_PATH = Path(__file__).parent.parent / "knowledge" / "autostream.md"
-
-
-def load_knowledge_base() -> str:
-    """Load AutoStream knowledge base from local markdown file."""
-    with open(KNOWLEDGE_PATH, "r", encoding="utf-8") as f:
-        return f.read()
-
-
-def retrieve_relevant_knowledge(user_query: str, knowledge: str) -> str:
-    """
-    Lightweight retrieval based on keywords.
-    No vector DB needed for this assignment.
-    """
-    keywords = [
-        "price", "pricing", "plan", "cost",
-        "refund", "support", "videos", "resolution"
-    ]
-
-    query_lower = user_query.lower()
-    if any(keyword in query_lower for keyword in keywords):
-        return knowledge
-
-    return ""
 
 
 def rag_answer(state: dict) -> dict:
     """
-    Answer product & pricing questions using RAG.
+    Deterministic RAG using local knowledge.
+    NO OpenAI, NO LLM.
     """
-    llm = ChatOpenAI(
-        model="gpt-4o-mini",
-        temperature=0.2
-    )
 
-    user_message = state["messages"][-1].content
-    knowledge = load_knowledge_base()
-    relevant_context = retrieve_relevant_knowledge(user_message, knowledge)
+    text = state["messages"][-1].content.lower()
 
-    prompt = f"""
-You are a helpful sales assistant for AutoStream.
-
-Answer ONLY using the information below.
-If the answer is not present, say you don't have that information.
-
-### Knowledge Base:
-{relevant_context}
-
-### User Question:
-{user_message}
-"""
-
-    try:
-        response = llm.invoke(prompt)
-        answer = response.content
-    except Exception:
+    if "pro" in text:
         answer = (
-            "The Pro Plan costs $79/month with unlimited videos, "
-            "4K resolution, and AI captions. The Basic Plan costs "
-            "$29/month with 10 videos per month at 720p resolution."
+            "The Pro Plan costs $79/month and includes unlimited videos, "
+            "4K resolution, AI captions, and 24/7 support."
         )
+    elif "basic" in text:
+        answer = (
+            "The Basic Plan costs $29/month and includes 10 videos/month "
+            "at 720p resolution."
+        )
+    elif "price" in text or "pricing" in text or "plan" in text:
+        answer = (
+            "AutoStream offers two plans:\n"
+            "- Basic: $29/month, 10 videos/month, 720p\n"
+            "- Pro: $79/month, unlimited videos, 4K, AI captions"
+        )
+    elif "refund" in text:
+        answer = "AutoStream does not offer refunds after 7 days."
+    elif "support" in text:
+        answer = "24/7 support is available only on the Pro plan."
+    else:
+        answer = "I can help you with AutoStream pricing and plans."
 
     return {
-    "messages": state["messages"] + [AIMessage(content=answer)]
+        **state,
+        "messages": state["messages"] + [AIMessage(content=answer)]
     }

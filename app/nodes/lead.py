@@ -4,35 +4,44 @@ from app.tools.lead_capture import mock_lead_capture
 
 def lead_qualification(state: dict) -> dict:
     """
-    Collects lead info step-by-step and triggers tool only when complete.
+    Lead qualification finite-state machine.
+    Collects name → email → platform and triggers tool ONLY when complete.
     """
 
     lead_data = state["lead_data"]
     messages = state["messages"]
 
-    # Step 1: Ask for Name
+    # Ask for name
     if lead_data.get("name") is None:
         return {
             **state,
-            "messages": messages + [AIMessage(content="Great! What's your name?")]
+            "messages": messages + [
+                AIMessage(content="Great! What's your name?")
+            ]
         }
 
-    # Step 2: Ask for Email
+    # Ask for email
     if lead_data.get("email") is None:
         return {
             **state,
-            "messages": messages + [AIMessage(content="Thanks! What's your email address?")]
+            "messages": messages + [
+                AIMessage(content="Thanks! What's your email address?")
+            ]
         }
 
-    # Step 3: Ask for Platform
+    # Ask for platform
     if lead_data.get("platform") is None:
         return {
             **state,
-            "messages": messages + [AIMessage(content="Which platform do you create content on? (YouTube, Instagram, etc.)")]
+            "messages": messages + [
+                AIMessage(
+                    content="Which platform do you create content on? (YouTube, Instagram, etc.)"
+                )
+            ]
         }
 
-    # Step 4: Trigger Tool (ONLY ONCE)
-    if not state["lead_complete"]:
+    # Trigger tool ONLY once
+    if not state.get("lead_complete", False):
         mock_lead_capture(
             name=lead_data["name"],
             email=lead_data["email"],
@@ -43,7 +52,9 @@ def lead_qualification(state: dict) -> dict:
             **state,
             "lead_complete": True,
             "messages": messages + [
-                AIMessage(content="🎉 You're all set! Our team will reach out to you shortly.")
+                AIMessage(
+                    content="🎉 You're all set! Our team will reach out to you shortly."
+                )
             ]
         }
 
